@@ -1,0 +1,177 @@
+---
+title             : "Reproducing the analysis of Pfattheicher et al., (2020)"
+shorttitle        : "Reproducing the analysis of Pfattheicher et al., (2020)"
+
+author: 
+  - name          : "Kristina Arevalo"
+    affiliation   : "1"
+    corresponding : yes    
+    address       : "1126 E 72nd St"
+    email         : "krisarevalo29@gmail.com"
+    role:       
+
+affiliation:
+  - id            : "1"
+    institution   : "Brooklyn College of the City University of New York"
+
+authornote: |
+   Kristina Arevalo, Department of Psychology, Brooklyn College of the City University of New York.
+   
+abstract: |
+  A reproduction of the analysis for Study 4 from Pfattheicher et al., (2020).
+
+keywords          : "COVID-19, pandemic, face masks, empathy"
+
+
+bibliography      : ["reference.bib"]
+
+floatsintext      : no
+figurelist        : no
+tablelist         : no
+footnotelist      : no
+linenumbers       : yes
+mask              : no
+draft             : no
+
+documentclass     : "apa6"
+classoption       : "man"
+output            : papaja::apa6_pdf
+---
+
+```{r setup, include = FALSE}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(readxl)
+library(papaja)
+library(RColorBrewer)
+library(pwr)
+```
+
+```{r analysis-preferences}
+# Seed for random number generation
+set.seed(42)
+knitr::opts_chunk$set(cache.extra = knitr::rand_seed)
+```
+
+
+@pfattheicher_emotional_2020 wanted to know if physical distancing and the wearing of face masks are due to empathy for people most vulnerable to the virus. In study 4, state empathy was assessed after each participant was assigned to either an empathy condition, an information-only condition, or a control condition. This was to prove empirically that higher levels of state empathy are directly related to the motivation to adhere to COVID-19 measures. 
+
+\newpage
+
+# Methods
+
+## Participants
+This study had a total of 1,526 participants; 47.2% female; age: M = 34.71 years, SD = 12.09) and was run in Germany between June 23 and June 26, 2020. Each participant was randomly assigned to one of three conditions: the information-only condition (n = 492), the empathy condition (n = 500), or the control condition (n = 534).
+
+## Procedure
+Participants in the information-only condition read an informative text from the Robert Koch Institute detailing facts about the coronavirus, how it is transmitted, and that face masks can prevent the spread of the disease. Participants in the empathy condition read a text of approximately similar length, in which a woman with a rare immune disease reported having had a coronavirus infection, detailed how seriously affected she was, and stated that she did not like it when people met others without wearing a face mask. In the control condition, no text and information were given, resembling a situation of no intervention. After the condition manipulations, participants responded to three items assessing state empathy. The central dependent variable was motivation to wear a face mask, which was measured with one item: “During the coming days, I will wear a face mask as often as possible when I meet other people.”
+
+\newpage
+
+# Results
+
+## Read and Clean the Data
+```{r}
+data <- read.csv("Study4.csv", stringsAsFactors = TRUE)
+
+levels(data$bed)
+
+data$bed <- factor(data$bed, levels = c(0,1,2), labels = c("Information Only", "Control", "Empathy"))
+data$bed <- factor(data$bed, levels = c("Control","Information Only", "Empathy"))
+
+
+info <- data %>% 
+  filter(bed == "Information Only") %>% 
+  select("empa")
+
+control <- data %>% 
+  filter(bed == "Control") %>% 
+   select("empa")
+
+empathy <- data %>% 
+  filter(bed == "Empathy") %>% 
+   select("empa")
+
+
+```
+
+## Independent Sample t-tests
+```{r}
+t1 <- t.test(empathy, info, var.equal = TRUE)
+
+```
+
+```{r}
+t2 <- t.test(empathy, control, var.equal = TRUE)
+
+```
+
+```{r}
+t3 <- t.test(control, info, var.equal = TRUE)
+
+```
+
+## One-way ANOVA
+```{r}
+my.anova <- aov(Q22_1 ~ bed, data= data)
+
+```
+
+## Figure 3 Replication
+```{r}
+ggplot(data, aes(x = bed, 
+                 y = Q22_1,
+                 group = bed, 
+                 fill= factor(bed))) + 
+  geom_violin() +
+  geom_boxplot(width = .07, fill = "white") +
+  stat_summary(fun =mean, colour="black", geom="point", 
+               shape=9, size=3)+
+  labs(x = "Condition", 
+       y = "Motivation to Wear a Face Mask",
+       title = "Figure 3") +
+  scale_fill_brewer(palette = "Paired")+
+  theme(legend.position="none")
+
+
+```
+
+## Papaja Reporting
+I found that participants in the empathy condition reported significantly higher state-empathy levels compared with the information-only condition,`r apa_print(t1)$full_result`, and compared with the control condition `r apa_print(t2)$full_result`. The information-only and the control conditions did not differ significantly, `r apa_print(t3)$full_result`. A one-way ANOVA showed that the motivation to wear a mask also differed between conditions, `r apa_print(my.anova)$full_result`
+
+# Discussion
+The re-analysis successfully reproduced the analysis reported by Pfattheicher et al., (2020). In study 4 of their experiment, they conducted several t-tests and a one-way ANOVA which were all successfuly reproduced. In the following section, I show an example of completing a simulation based power analysis for this design.
+
+## Simulation-based power analysis
+
+The design was a between subject design with 1,526 subjects. This power curve applies for independent-sample t-tests with n=508. Because the groups were unbalanced, a harmonic mean of 508 was computed. @pfattheicher_emotional_2020 reported "With this sample size, we are able to detect effects (fs) greater than .09 with high statistical power (power = .90; alpha = .05, two- tailed)." I believe that based on this power analysis, their study was not under powered.
+
+
+```{r}
+effect_sizes <- seq(.1,2,.1)
+power <- sapply(effect_sizes,
+          FUN = function(x) {
+            pwr.t.test(n=508,
+            d=x,
+            sig.level=.05,
+            type="two.sample",
+            alternative="two.sided")$power})
+plot_df <- data.frame(effect_sizes,power)
+
+library(ggplot2)
+ggplot(plot_df, aes(x=effect_sizes,
+                    y=power))+
+  geom_point()+
+  geom_line()
+
+```
+
+
+
+\newpage
+
+# References
+
+
+

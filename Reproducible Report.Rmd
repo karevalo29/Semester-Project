@@ -1,0 +1,134 @@
+---
+title: "Reproducible Report"
+author: "Kristina Arevalo"
+date: '`r format(Sys.time(), "%a %b %d %Y")`'
+output: 
+  pdf_document:
+    latex_engine: xelatex
+    toc: yes 
+    toc_depth: 2
+monofont: Times New Roman
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE)
+```
+
+```{r,echo=FALSE}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(readxl)
+library(papaja)
+library(RColorBrewer)
+library(pwr)
+```
+
+\newpage
+
+# Introduction
+This report reproduces the analysis of Study 4 reported in Pfattheicher et al., (2020). The citation for the article is:  
+
+Pfattheicher, S., Nockur, L., Böhm, R., Sassenrath, C., & Petersen, M. B. (2020). The Emotional Path to Action: Empathy Promotes Physical Distancing and Wearing of Face Masks During the COVID-19 Pandemic. Psychological Science, 31(11), 1363–1373. https://doi.org/10.1177/0956797620964422
+To data was downloaded from, https://osf.io/pq3ky/. 
+
+Pfattheicher et al., (2020) wanted to know if physical distancing and the wearing of face masks are due to empathy for people most vulnerable to the virus. In study 4, state empathy was assessed after each participant was assigned to either an empathy condition, an information-only condition, or a control condition. This was to prove empirically that higher levels of state empathy are directly related to the motivation to adhere to COVID-19 measures. 
+
+# Re-analysis
+
+## Read & clean the data
+```{r}
+
+data <- read.csv("Study4.csv", stringsAsFactors = TRUE)
+
+data$bed <- factor(as.numeric(data$bed))
+
+levels(data$bed)
+
+data$bed <- factor(data$bed, levels = c(0,1,2), labels = c("Information Only", "Control", "Empathy"))
+
+info <- data %>% 
+  filter(bed == "Information Only") %>% 
+  select("empa")
+
+control <- data %>% 
+  filter(bed == "Control") %>% 
+   select("empa")
+
+empathy <- data %>% 
+  filter(bed == "Empathy") %>% 
+   select("empa")
+
+```
+
+## t-test 1: empathy vs info 
+```{r}
+t1 <- t.test(empathy, info, var.equal = TRUE)
+
+```
+
+## t-test 2: empathy vs control
+```{r}
+t2 <- t.test(empathy, control, var.equal = TRUE)
+
+```
+
+## t-test 3: info vs control
+```{r}
+t3 <- t.test(control, info, var.equal = TRUE)
+
+```
+
+## one-way ANOVA
+```{r}
+my.anova <- aov(Q22_1 ~ bed, data= data)
+
+```
+
+
+## Figure 3 Replication
+```{r}
+ggplot(data, aes(x = bed, 
+                 y = Q22_1,
+                 group = bed, 
+                 fill= factor(bed))) + 
+  geom_violin() +
+  geom_boxplot(width = .07, fill = "white") +
+  stat_summary(fun =mean, colour="black", geom="point", 
+               shape=9, size=3)+
+  labs(x = "Condition", y = "Motivation to Wear a Face Mask", title = "Figure 3") +
+  scale_fill_brewer(palette = "Paired")+
+  theme(legend.position="none")
+
+```
+
+## Power Analysis
+```{r}
+
+effect_sizes <- seq(.1,2,.1)
+power <- sapply(effect_sizes,
+          FUN = function(x) {
+            pwr.t.test(n=508,
+            d=x,
+            sig.level=.05,
+            type="two.sample",
+            alternative="two.sided")$power})
+plot_df <- data.frame(effect_sizes,power)
+
+
+ggplot(plot_df, aes(x=effect_sizes,
+                    y=power))+
+  geom_point()+
+  geom_line()
+
+```
+
+
+# Write-up of re-analysis results
+
+I found that participants in the empathy condition reported significantly higher state- empathy levels compared with the information-only condition,`r apa_print(t1)$full_result`, and compared with the control condition `r apa_print(t2)$full_result`. The information-only and the control conditions did not differ significantly, `r apa_print(t3)$full_result`. A one-way ANOVA showed that the motivation to wear a mask also differed between conditions, `r apa_print(my.anova)$full_result`
+
+# Discussion
+
+The re-analysis successfully reproduced the analysis reported by Pfattheicher et al., (2020)
